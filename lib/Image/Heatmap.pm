@@ -5,7 +5,7 @@ use warnings;
 
 use Image::Magick;
 
-our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 400 } ( '$Rev: 66 $' =~ /(\d+)/g ) ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 400 } ( '$Rev: 68 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
 
 sub new {
@@ -305,6 +305,9 @@ sub finish_work {
 
                 my $file_location;
                 my $did_find =  FOUND_INDICATION;
+                my ( $file_path ) = $INC{'Image/Heatmap.pm'} =~ /^(.*)\/Image\/Heatmap.pm$/ || '.';
+                $file_path = $1 || '.';
+
                 eval{
                     File::Find::find(
                         {
@@ -316,7 +319,7 @@ sub finish_work {
                                 throw($did_find);
                             },
                         },
-                        $INC{'Image/Heatmap.pm'} =~ /^(.*)\/lib\/IGuard\/Config.pm$/ || '.'
+                        $file_path,
                     );
                 };
 
