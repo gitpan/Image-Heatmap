@@ -5,7 +5,7 @@ use warnings;
 
 use Image::Magick;
 
-our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 400 } ( '$Rev: 68 $' =~ /(\d+)/g ) ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 400 } ( '$Rev: 70 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
 
 sub new {
@@ -155,6 +155,8 @@ sub process {
             'compose'  => 'Multiply',
             'geometry' => '+0+0',
         );
+
+        unlink($child_image);
     }
 
     note("Negate && Fx -expression v.p{0,u*v.h}");
