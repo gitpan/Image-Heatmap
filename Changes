@@ -1,4 +1,8 @@
 ------------------------------------------------------------------------
+r66 | trevor | 2009-02-27 07:41:25 -0800 (Fri, 27 Feb 2009) | 1 line
+
+Upgrading version number
+------------------------------------------------------------------------
 r64 | trevor | 2009-02-27 07:31:07 -0800 (Fri, 27 Feb 2009) | 1 line
 
 Updating revision number to have a 3 char, zero-padded minor version

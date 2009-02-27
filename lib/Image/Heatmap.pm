@@ -5,7 +5,7 @@ use warnings;
 
 use Image::Magick;
 
-our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 } ( '$Rev: 64 $' =~ /(\d+)/g ) ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 400 } ( '$Rev: 66 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
 
 sub new {
