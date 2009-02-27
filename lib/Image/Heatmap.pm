@@ -5,49 +5,13 @@ use warnings;
 
 use Image::Magick;
 
-INIT {
-    foreach my $accessor ( qw(
-
-        processes
-        statement
-
-        map
-        tmp_dir
-        output
-        parent
-
-        thumbnail
-        thumbnail_scale
-
-        colors
-        plot_base
-
-        plot_size
-        image_width
-        image_height
-        zoom
-        x_adjust
-        y_adjust
-        width
-        width_adjust
-        height
-        height_adjust
-
-    ) ) {
-        {
-            no strict 'refs';
-            *{ __PACKAGE__ . "::$accessor" } = sub {
-                return &Image::Heatmap::private::accessor( shift, $accessor, @_ );
-            }
-        }
-    }
-}
-
-our $VERSION = join( '.', 0, map{ $_ - 47 } ( '$Rev: 51 $' =~ /(\d+)/g ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 } ( '$Rev: 64 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
 
 sub new {
     my $self = bless( Image::Heatmap::private::next_oid(), shift ); 
+
+    Image::Heatmap::private::init();
 
     # Defaults
     $self->tmp_dir('/tmp/');
@@ -240,6 +204,53 @@ use constant {
 };
 
 my %stash = ();
+
+{
+    my $no_op = 0;
+    sub init {
+        return if ( $no_op );
+        foreach my $accessor ( qw(
+
+            processes
+            statement
+
+            map
+            tmp_dir
+            output
+            parent
+
+            thumbnail
+            thumbnail_scale
+
+            colors
+            plot_base
+
+            plot_size
+            image_width
+            image_height
+            zoom
+            x_adjust
+            y_adjust
+            width
+            width_adjust
+            height
+            height_adjust
+
+        ) ) {
+            if ( Image::Heatmap->can($accessor) ) {
+                $no_op = 1;
+                return;
+            }
+
+            {
+                no strict 'refs';
+                *{ "Image::Heatmap::$accessor" } = sub {
+                    return &Image::Heatmap::private::accessor( shift, $accessor, @_ );
+                }
+            }
+        }
+    }
+}
 
 sub distribute_work {
     my ($self) = @_;

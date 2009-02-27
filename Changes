@@ -1,4 +1,12 @@
 ------------------------------------------------------------------------
+r64 | trevor | 2009-02-27 07:31:07 -0800 (Fri, 27 Feb 2009) | 1 line
+
+Updating revision number to have a 3 char, zero-padded minor version
+------------------------------------------------------------------------
+r62 | trevor | 2009-02-27 07:28:50 -0800 (Fri, 27 Feb 2009) | 1 line
+
+Removing the dependancy on an INIT block
+------------------------------------------------------------------------
 r51 | trevor | 2009-02-14 23:04:06 -0800 (Sat, 14 Feb 2009) | 1 line
 
 Adding useful POD
