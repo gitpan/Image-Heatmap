@@ -5,7 +5,7 @@ use warnings;
 
 use Image::Magick;
 
-our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 400 } ( '$Rev: 70 $' =~ /(\d+)/g ) ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 73 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
 
 sub new {
@@ -15,6 +15,7 @@ sub new {
 
     # Defaults
     $self->tmp_dir('/tmp/');
+    $self->transparent_bg(0);
     $self->processes(1);
     $self->x_adjust(0);
     $self->y_adjust(0);
@@ -170,6 +171,35 @@ sub process {
         'compose' => 'Blend',
         'blend'   => '40%',
     );
+
+    # This is an über sick hack.  Sick in the 'not good' way, BTW.
+    # 
+    # Transparent is a nice API to make any
+    # color transparent.  However, I have not figured out the ImageMagick
+    # normalization of RGB values and therefore cannot tell what the value
+    # of the image is.  Therefore, we will find the color, covert it all to
+    # #fff and make that xparent.
+    #
+    # Using the constant color it becomes does not work, nor using the normalized
+    # numeric as a percentage of 255 works.  Nobody seems to know what this number
+    # means, so I will assume it's IM IP.
+    #
+    # Truely, this only adds 1 second of processing for every 1000 sq. px. using a 64px
+    # dot, which is somewhat unsubstantial.  Still, it's a pain :(
+    if ( $self->transparent_bg() ) {
+        my ( $rx, $gx, $bx ) = $fx->GetPixel( 'x' => 0, 'y' => 0 );
+        my ( $r, $g, $b );
+        foreach my $x_new ( 0 .. $fx->Get('width') ) {
+            foreach my $y_new ( 0 .. $fx->Get('height') ) {
+                ( $r, $g, $b ) = $fx->GetPixel( 'x' => $x_new, 'y' => $y_new );
+                if ( $r == $rx && $b == $bx && $g == $gx ) {
+                    $fx->SetPixel( 'x' => $x_new, 'y' => $y_new, 'color' => [ 1,1,1 ] );
+                }
+            }
+        }
+        $fx->Transparent( 'color' => '#FFFFFF' );
+    }
+
     $fx->Write( $self->output() );
 
     if ( my $thumbnail = $self->thumbnail() ) {
@@ -223,6 +253,8 @@ my %stash = ();
 
             thumbnail
             thumbnail_scale
+
+            transparent_bg
 
             colors
             plot_base
@@ -421,7 +453,7 @@ sub notify {
           }
         : sub{ return $_[0]; };
 
-    print( sprintf( "[%s] - %d - %s\n", scalar(localtime()), $$, &$stringer($message) ) );
+    warn( sprintf( "[%s] - %d - %s\n", scalar(localtime()), $$, &$stringer($message) ) );
 }
 
 {
@@ -609,6 +641,18 @@ of the mapped image.
 
 Will define the height, in pixels, of the plot area.  Will default to the height
 of the mapped image.
+
+=head2 transparent_bg
+
+By default, this is disabled.
+
+    my $heat = Image::Heatmap->new();
+    $heat->transparent_bg(1);
+
+Rather than the standard, default background of the off-gray, will attempt to code
+the background fully transparent.  It will do so by using the color in coordinates 0,0
+to determine the background color and apply transparency to all pixels that match
+the same color exactly.
 
 =head1 EXAMPLES
 
