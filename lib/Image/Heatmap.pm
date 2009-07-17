@@ -5,7 +5,7 @@ use warnings;
 
 use Image::Magick;
 
-our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 73 $' =~ /(\d+)/g ) ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 103 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
 
 sub new {
@@ -168,36 +168,28 @@ sub process {
     note("Composite -image $map -compose Blend -blend 40%");
     $fx->Composite(
         'image'   => $map,
-        'compose' => 'Blend',
-        'blend'   => '40%',
+        'compose' => 'Multiply',
+        'blend'   => '+0+0',
     );
 
-    # This is an über sick hack.  Sick in the 'not good' way, BTW.
-    # 
-    # Transparent is a nice API to make any
-    # color transparent.  However, I have not figured out the ImageMagick
-    # normalization of RGB values and therefore cannot tell what the value
-    # of the image is.  Therefore, we will find the color, covert it all to
-    # #fff and make that xparent.
-    #
-    # Using the constant color it becomes does not work, nor using the normalized
-    # numeric as a percentage of 255 works.  Nobody seems to know what this number
-    # means, so I will assume it's IM IP.
-    #
-    # Truely, this only adds 1 second of processing for every 1000 sq. px. using a 64px
-    # dot, which is somewhat unsubstantial.  Still, it's a pain :(
     if ( $self->transparent_bg() ) {
-        my ( $rx, $gx, $bx ) = $fx->GetPixel( 'x' => 0, 'y' => 0 );
-        my ( $r, $g, $b );
-        foreach my $x_new ( 0 .. $fx->Get('width') ) {
-            foreach my $y_new ( 0 .. $fx->Get('height') ) {
-                ( $r, $g, $b ) = $fx->GetPixel( 'x' => $x_new, 'y' => $y_new );
-                if ( $r == $rx && $b == $bx && $g == $gx ) {
-                    $fx->SetPixel( 'x' => $x_new, 'y' => $y_new, 'color' => [ 1,1,1 ] );
-                }
-            }
+
+        my $trans_width  = $fx->Get('width')  - 1;
+        my $trans_height = $fx->Get('height') - 1;
+
+        foreach my $trans_coord ( 
+            [ 0,            0             ],
+            [ $trans_width, 0             ],
+            [ 0,            $trans_height ],
+            [ $trans_width, $trans_height ],
+        ) { 
+            my ( $x, $y ) = @$trans_coord;
+            $fx->MatteFloodfill(
+                'x' => $x, 
+                'y' => $y, 
+                'fill' => 'rgb(255,255,255,0)', 
+            );
         }
-        $fx->Transparent( 'color' => '#FFFFFF' );
     }
 
     $fx->Write( $self->output() );
