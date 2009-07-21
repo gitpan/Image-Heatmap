@@ -5,7 +5,7 @@ use warnings;
 
 use Image::Magick;
 
-our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 103 $' =~ /(\d+)/g ) ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 104 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
 
 sub new {
@@ -59,9 +59,28 @@ sub process {
         note('W x H Adjust: ' . join( ' x ', map{ $self->$_() } qw( width_adjust height_adjust ) ) );
     }
 
-    my $sth = $self->statement();
-    $sth->execute();
-    while ( my $point = $sth->fetchrow_hashref() ) {
+    my $loader;
+
+    if ( my $sth = $self->statement() ) {
+        my $sth = $self->statement();
+        $sth->execute();
+        $loader = sub {
+            return $sth->fetchrow_hashref();
+        };
+    }
+    elsif ( my $geo_list = $self->geo_list() ) {
+        $loader = sub {
+            return shift( @$geo_list );
+        }
+    }
+    else {
+        Image::Heatmap::private::throw(
+            'No value for "statement" or "geo_list"... not sure what you want from me.'
+        );
+    }
+
+
+    while ( my $point = $loader->() ) {
         my ( $lat, $lng ) = @$point{ qw( latitude longitude ) };
 
         # Make sure a lat/lng exist
@@ -237,6 +256,7 @@ my %stash = ();
 
             processes
             statement
+            geo_list 
 
             map
             tmp_dir
@@ -532,6 +552,26 @@ A defficiency of these requirements will kill the processing.
     # the table do not match, you should select them as named columns.
     my $sth   = $dbh->prepare('select lat AS latitude, long AS longitude from table');
 
+=head2 geo_list
+
+Can be an array reference of hash references with each hash contianing 
+two keys: latitude and longitude.
+
+    [
+        {
+            'latitude'  => 0,
+            'longitude' => 0,
+        },
+    ]
+
+This is an alternative method of than statement, but will be accessed after
+statement.  Therefore, if both attributes are set, the statement
+call will be used.
+
+    # No longer have the need for statement handle requirements
+    my $image = Image::Heatmap->new();
+    $image->geo_list( [ { 'latitude' => 0, 'longitude' => 0 } ] );
+
 =head2 map
 
 A string representng the readable location of the mapping image the plots will be layered
@@ -681,13 +721,6 @@ the same color exactly.
 =head1 TODO
 
 =over
-
-=item More input methods
-
-At the time of this writing, the only method of which to give this module coordinates to plot
-is via a L<DBI> statement handle with specifically named columns.  This is useful, but not what
-everyone would necessarily want and it is my goal (not promise ;) ) to add this at some time
-in the future.
 
 =item $VERSION > 1
 
