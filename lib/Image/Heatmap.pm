@@ -5,8 +5,13 @@ use warnings;
 
 use Image::Magick;
 
-our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 104 $' =~ /(\d+)/g ) ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 106 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
+
+use constant {
+    TRANSPARENCY_V1 => 0x1,
+    TRANSPARENCY_V2 => 0x2,
+};
 
 sub new {
     my $self = bless( Image::Heatmap::private::next_oid(), shift ); 
@@ -16,6 +21,7 @@ sub new {
     # Defaults
     $self->tmp_dir('/tmp/');
     $self->transparent_bg(0);
+    $self->transparent_version(TRANSPARENCY_V2);
     $self->processes(1);
     $self->x_adjust(0);
     $self->y_adjust(0);
@@ -193,21 +199,39 @@ sub process {
 
     if ( $self->transparent_bg() ) {
 
-        my $trans_width  = $fx->Get('width')  - 1;
-        my $trans_height = $fx->Get('height') - 1;
+        if ( $self->transparent_version() == ( TRANSPARENCY_V1 | TRANSPARENCY_V2 ) ) {
+            throw('Only a single transparency version is allowed at one time.');
+        }
+        elsif ( $self->transparent_version() & TRANSPARENCY_V1 ) {
+            my ( $rx, $gx, $bx ) = $fx->GetPixel( 'x' => 0, 'y' => 0 );
+            my ( $r, $g, $b );
+            foreach my $x_new ( 0 .. $fx->Get('width') ) {
+                foreach my $y_new ( 0 .. $fx->Get('height') ) {
+                    ( $r, $g, $b ) = $fx->GetPixel( 'x' => $x_new, 'y' => $y_new );
+                    if ( $r == $rx && $b == $bx && $g == $gx ) {
+                        $fx->SetPixel( 'x' => $x_new, 'y' => $y_new, 'color' => [ 1,1,1 ] );
+                    }
+                }
+            }
+            $fx->Transparent( 'color' => '#FFFFFF' );
+        }
+        elsif ( $self->transparent_version() & TRANSPARENCY_V2 ) {
+            my $trans_width  = $fx->Get('width')  - 1;
+            my $trans_height = $fx->Get('height') - 1;
 
-        foreach my $trans_coord ( 
-            [ 0,            0             ],
-            [ $trans_width, 0             ],
-            [ 0,            $trans_height ],
-            [ $trans_width, $trans_height ],
-        ) { 
-            my ( $x, $y ) = @$trans_coord;
-            $fx->MatteFloodfill(
-                'x' => $x, 
-                'y' => $y, 
-                'fill' => 'rgb(255,255,255,0)', 
-            );
+            foreach my $trans_coord ( 
+                [ 0,            0             ],
+                [ $trans_width, 0             ],
+                [ 0,            $trans_height ],
+                [ $trans_width, $trans_height ],
+            ) { 
+                my ( $x, $y ) = @$trans_coord;
+                $fx->MatteFloodfill(
+                    'x' => $x, 
+                    'y' => $y, 
+                    'fill' => 'rgb(255,255,255,0)', 
+                );
+            }
         }
     }
 
@@ -267,6 +291,7 @@ my %stash = ();
             thumbnail_scale
 
             transparent_bg
+            transparent_version
 
             colors
             plot_base
@@ -685,6 +710,29 @@ Rather than the standard, default background of the off-gray, will attempt to co
 the background fully transparent.  It will do so by using the color in coordinates 0,0
 to determine the background color and apply transparency to all pixels that match
 the same color exactly.
+
+=head2 transparent_version
+
+There are numerous supported methods of forcing backgrounds to be transparent
+depending on the version of PerlMagik you have backing this module.  Depending
+on this, there are two methods available for doing so; one more efficient
+than the other.  Both are the same in that they take the "magic wand" apprach
+to backgrounding, finding the common colors in the corners of the image and 
+making all simliar colors transparent.
+
+The older and less efficient approach can be enabled such as:
+
+    my $heat = Image::Heatmap->new();
+    $heat->transparent_bg(1);
+    $heat->transparent_bg( Image::Heatmap::TRANSPARENT_V1 );
+
+The newer and more efficient approach can be enabled such as:
+
+    my $heat = Image::Heatmap->new();
+    $heat->transparent_bg(1);
+    $heat->transparent_bg( Image::Heatmap::TRANSPARENT_V2 );
+
+The latter of the examples is defaulted.
 
 =head1 EXAMPLES
 
