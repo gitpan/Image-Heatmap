@@ -5,7 +5,7 @@ use warnings;
 
 use Image::Magick;
 
-our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 106 $' =~ /(\d+)/g ) ) ); 
+our $VERSION = join( '.', 0, sprintf( '%03d', map{ $_ - 47 + 500 } ( '$Rev: 112 $' =~ /(\d+)/g ) ) ); 
 our $DEBUG = 0;
 
 use constant {
@@ -203,7 +203,11 @@ sub process {
             throw('Only a single transparency version is allowed at one time.');
         }
         elsif ( $self->transparent_version() & TRANSPARENCY_V1 ) {
-            my ( $rx, $gx, $bx ) = $fx->GetPixel( 'x' => 0, 'y' => 0 );
+            my ( $rx, $gx, $bx ) = $fx->GetPixel( 
+                'x' => $fx->Get('width'), 
+                'y' => $fx->Get('height'), 
+            );
+
             my ( $r, $g, $b );
             foreach my $x_new ( 0 .. $fx->Get('width') ) {
                 foreach my $y_new ( 0 .. $fx->Get('height') ) {
@@ -233,6 +237,15 @@ sub process {
                 );
             }
         }
+    }
+
+    if ( my $contrast = $self->contrast() ) {
+        eval { $fx->SigmoidalContrast(
+            'contrast'  => $contrast,
+            'sharpen'   => 'True',
+            'channel'   => 'All',
+            'mid-point' => '50%',
+        ) };
     }
 
     $fx->Write( $self->output() );
@@ -292,6 +305,8 @@ my %stash = ();
 
             transparent_bg
             transparent_version
+
+            contrast
 
             colors
             plot_base
@@ -733,6 +748,14 @@ The newer and more efficient approach can be enabled such as:
     $heat->transparent_bg( Image::Heatmap::TRANSPARENT_V2 );
 
 The latter of the examples is defaulted.
+
+=head2 contrast
+
+Will adjust the contrast of the final image.  0 is default,
+3 is normal and 10 is a LOT.
+
+    my $heat = Image::Heatmap->new();
+    $heat->constrast(3);
 
 =head1 EXAMPLES
 
